@@ -40,6 +40,10 @@ public abstract class BaseVisualizer {
 
     protected byte[] mBytes;
     protected byte[] mFFTBytes;
+    protected Matrix mMatrix;
+    protected AudioData mAudioData;
+    protected FFTData mFftData;
+    protected boolean mDrawingEnabled = true;
     protected Rect mRect = new Rect();
     protected Visualizer mVisualizer;
     protected int mAudioSessionId;
@@ -55,6 +59,11 @@ public abstract class BaseVisualizer {
     public BaseVisualizer() {
         mBytes = null;
         mFFTBytes = null;
+
+        mAudioData = new AudioData(null);
+        mFftData = new FFTData(null);
+
+        mMatrix = new Matrix();
 
         mFlashPaint.setColor(Color.argb(122, 255, 255, 255));
         mFadePaint.setColor(Color.argb(200, 255, 255, 255)); // Adjust alpha to
@@ -156,6 +165,10 @@ public abstract class BaseVisualizer {
         return onGetHeight();
     }
 
+    public void setDrawingEnabled(boolean draw) {
+        mDrawingEnabled = draw;
+    }
+
     /**
      * Call to release the resources used by VisualizerView. Like with the
      * MediaPlayer it is good practice to call this method
@@ -174,6 +187,7 @@ public abstract class BaseVisualizer {
      */
     public void updateVisualizer(byte[] bytes) {
         mBytes = bytes;
+        mAudioData.bytes = bytes;
         invalidate();
     }
 
@@ -186,6 +200,7 @@ public abstract class BaseVisualizer {
      */
     public void updateVisualizerFFT(byte[] bytes) {
         mFFTBytes = bytes;
+        mFftData.bytes = bytes;
         invalidate();
     }
 
@@ -196,6 +211,10 @@ public abstract class BaseVisualizer {
     public void flash() {
         mFlash = true;
         invalidate();
+    }
+
+    public void onSizeChanged(int w, int h, int oldw, int oldh) {
+        mRect.set(0, 0, getWidth(), getHeight());
     }
 
     public void onDraw(Canvas canvas) {
@@ -215,32 +234,32 @@ public abstract class BaseVisualizer {
 
         if (mBytes != null) {
             // Render all audio renderers
-            AudioData audioData = new AudioData(mBytes);
             for (Renderer r : mRenderers)
             {
-                r.render(mCanvas, audioData, mRect);
+                r.render(mCanvas, mAudioData, mRect);
             }
         }
 
         if (mFFTBytes != null) {
             // Render all FFT renderers
-            FFTData fftData = new FFTData(mFFTBytes);
             for (Renderer r : mRenderers)
             {
-                r.render(mCanvas, fftData, mRect);
+                r.render(mCanvas, mFftData, mRect);
             }
         }
 
-        // Fade out old contents
-        mCanvas.drawPaint(mFadePaint);
+        if (mDrawingEnabled) {
+            // Fade out old contents
+            mCanvas.drawPaint(mFadePaint);
 
-        if (mFlash)
-        {
-            mFlash = false;
-            mCanvas.drawPaint(mFlashPaint);
+            if (mFlash)
+            {
+                mFlash = false;
+                mCanvas.drawPaint(mFlashPaint);
+            }
+
+            canvas.drawBitmap(mCanvasBitmap, mMatrix, null);
         }
-
-        canvas.drawBitmap(mCanvasBitmap, new Matrix(), null);
     }
 
     // Methods for adding renderers to visualizer
